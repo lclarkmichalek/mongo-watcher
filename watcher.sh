@@ -1,18 +1,20 @@
 #!/bin/bash
 trap 'kill $(jobs -p)' EXIT
 
+STATSD_HOST="${STATSD_HOST:-127.0.0.1}"
+STATSD_PORT="${STATSD_PORT:-8125}"
+MONGO_HOST="${MONGO_HOST:-127.0.0.1}"
+MONGO_PORT="${MONGO_PORT:-27017}"
+
 CONF_PATH=`readlink -f ${1-/etc/mongo-watcher}`
 pushd / >>/dev/null
 echo "Looking for config in ${CONF_PATH}"
 
 function pushStatsd {
-    host="${STATSD_HOST:-127.0.0.1}"
-    port="${STATSD_PORT:-8125}"
-
     payload="${1}:${2}|g"
 
     # Setup UDP socket with statsd server
-    exec 3<> /dev/udp/$host/$port
+    exec 3<> /dev/udp/$STATSD_HOST/$STATSD_PORT
 
     # Send data
     printf "$payload" >&3
@@ -29,7 +31,7 @@ function runWatch {
     dbName=$4
 
     while true; do
-        value=$(mongo --quiet $dbName $file)
+        value=$(mongo --quiet $MONGO_HOST:$MONGO_PORT/$dbName $file)
         echo "$statName -> $value"
         pushStatsd $statName $value
         sleep $interval
